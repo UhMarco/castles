@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Castles</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module">
+        import generate from "./generator.js";
+
+        const board = document.getElementById("board");
+        
+        const svg = document.getElementById('region-overlay');
+
+        let puzzle = generate();
+        let castles = [];
+
+        const size = Math.sqrt(puzzle.length);
+
+        const colors = ["blue", "tan", "purple", "red", "teal"].sort(() => Math.random() - 0.5);
+
+        const get = (row, col) => puzzle[row * size + col];
+        const getRow = (i) => Math.floor(i / size);
+        const getCol = (i) => i % size;
+
+        board.style.gridTemplateColumns = `repeat(${size}, var(--cell-size))`;
+
+        const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size'));
+        const total = size * cellSize;
+        const offset = 8;
+
+        function drawRegionBorders() {
+            svg.setAttribute('viewBox', `${-offset} ${-offset} ${total + offset * 2} ${total + offset * 2}`);
+            svg.innerHTML = '';
+
+            const segments = [];
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const current = get(row, col);
+
+                    // Right border
+                    if (col < size - 1 && get(row, col + 1) !== current) {
+                        segments.push({ x1: (col + 1) * cellSize, y1: row * cellSize, x2: (col + 1) * cellSize, y2: (row + 1) * cellSize });
+                    }
+
+                    // Bottom border
+                    if (row < size - 1 && get(row + 1, col) !== current) {
+                        segments.push({ x1: col * cellSize, y1: (row + 1) * cellSize, x2: (col + 1) * cellSize, y2: (row + 1) * cellSize });
+                    }
+                }
+            }
+
+            segments.forEach(({ x1, y1, x2, y2 }) => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', 'black');
+                line.setAttribute('stroke-width', '6');
+                line.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(line);
+            });
+        }
+
+        function main() {
+            board.innerHTML = "";
+
+            const castleRegions = new Set(castles.map(i => puzzle[i]));
+
+
+            for (let i = 0; i < size * size; i++) {
+                const cell = document.createElement("cell");
+
+                cell.classList.add(colors[puzzle[i]]);
+
+                // Inner borders
+                if (i < size) cell.classList.add("no-border-top");
+                if (i >= puzzle.length - size) cell.classList.add("no-border-bottom");
+                if (i % size == 0) cell.classList.add("no-border-left");
+                if ((i + 1) % size === 0) cell.classList.add("no-border-right");
+
+                // Icons
+                if (castles.includes(i)) {
+                    cell.classList.add('castle');
+                    cell.addEventListener("click", (e) => {
+                        castles.splice(castles.indexOf(i), 1);
+                        main();
+                    });
+                } else {
+                    const sameRegionAsACastle = castleRegions.has(puzzle[i]);
+
+                    const row = getRow(i);
+                    const col = getCol(i);
+
+                    const adjacentToCastle = castles.some(c => {
+                        const crow = getRow(c);
+                        const ccol = getCol(c);
+                        return (
+                            row === crow ||
+                            col === ccol ||
+                            (Math.abs(row - crow) === 1 &&
+                            Math.abs(col - ccol) === 1)
+                        );
+                    });
+
+                    if (sameRegionAsACastle || adjacentToCastle) {
+                        cell.classList.add('dot');
+                    } else {
+                        cell.addEventListener("click", (e) => {
+                            castles.push(i);
+                            main();
+                        });
+                    }
+                }
+
+                board.appendChild(cell);
+            }
+
+            drawRegionBorders();
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Tab") {
+                e.preventDefault();
+                puzzle = generate();
+                castles = [];
+                main();
+            }
+        });
+
+        main();
+    </script>
+</head>
+<body>
+    <div class="board-wrapper">
+        <div id="board"></div>
+        <svg class="region-overlay" id="region-overlay"></svg>
+    </div>
+</body>
+</html>
