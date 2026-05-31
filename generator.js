@@ -1,7 +1,7 @@
 export default function generate() {
     // yeah, no
 
-    let i = parseInt(localStorage.getItem("iterator")) ?? 0;
+    let i = parseInt(localStorage.getItem("iterator") ?? 0);
 
     const puzzles = [
         [
